@@ -1,0 +1,27 @@
+# 临时文件
+.tools/
+.playwright-cli/
+preview-*.png
+mobile-*.png
+verify*.js
+diag*.js
+shot-*.js
+smoke-*.js
+
+# 截图与测试产物
+*.png
+
+# ⚠️ 真实密钥文件——严禁推送到公开仓库！
+tools/cards.csv
+tools/cards.sql
+
+# ⚠️ 含管理后台默认密码，严禁公开
+supabase/admin.sql
+
+# 编辑器
+.vscode/
+.idea/
+
+# 系统文件
+.DS_Store
+Thumbs.db

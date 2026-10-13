@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>密钥管理后台 · 天赋职业测评</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .admin-table th { position: sticky; top: 0; background: #f9fafb; z-index: 1; }
+    .status-pill { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+  </style>
+</head>
+<body class="bg-gradient-to-br from-slate-900 via-indigo-900 to-purple-900 min-h-screen text-gray-800">
+
+  <!-- 登录区 -->
+  <section id="admin-login" class="flex items-center justify-center min-h-screen p-4">
+    <div class="card w-full max-w-md p-8 text-center">
+      <div class="text-5xl mb-3">🔐</div>
+      <h1 class="text-xl font-bold text-gray-900 mb-1">密钥管理后台</h1>
+      <p class="text-xs text-gray-400 mb-6">天赋职业测评 · 仅管理员使用</p>
+      <input type="password" id="admin-pwd" placeholder="输入管理密码" 
+        class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-purple-500 mb-4">
+      <button id="admin-login-btn" class="btn-primary w-full py-3 rounded-xl text-white font-semibold">登 录</button>
+      <p id="admin-login-error" class="text-red-500 text-sm mt-3 hidden"></p>
+      <p class="text-xs text-gray-400 mt-4">初始密码：CFAdmin-8k3N-vQ7z（登录后请立即修改）</p>
+    </div>
+  </section>
+
+  <!-- 管理面板 -->
+  <section id="admin-panel" class="hidden min-h-screen p-4 pb-16">
+    <div class="max-w-4xl mx-auto">
+
+      <!-- 顶栏 -->
+      <div class="flex items-center justify-between mb-6 text-white">
+        <h1 class="text-lg font-bold">🔐 密钥管理后台</h1>
+        <div class="flex gap-2">
+          <button id="refresh-btn" class="px-4 py-2 rounded-xl bg-white/10 border border-white/20 text-sm">刷新</button>
+          <button id="logout-btn" class="px-4 py-2 rounded-xl bg-white/10 border border-white/20 text-sm">退出</button>
+        </div>
+      </div>
+
+      <!-- 统计 -->
+      <div class="grid grid-cols-3 gap-3 mb-6">
+        <div class="card p-4 text-center">
+          <div id="stat-total" class="text-2xl font-bold text-gray-900">-</div>
+          <div class="text-xs text-gray-500 mt-1">密钥总数</div>
+        </div>
+        <div class="card p-4 text-center">
+          <div id="stat-unused" class="text-2xl font-bold text-green-600">-</div>
+          <div class="text-xs text-gray-500 mt-1">未使用</div>
+        </div>
+        <div class="card p-4 text-center">
+          <div id="stat-exhausted" class="text-2xl font-bold text-red-500">-</div>
+          <div class="text-xs text-gray-500 mt-1">已用完</div>
+        </div>
+      </div>
+
+      <!-- 生成新密钥 -->
+      <div class="card p-6 mb-6">
+        <h2 class="font-bold text-gray-900 text-sm mb-4">➕ 生成新密钥</h2>
+        <div class="flex gap-3 mb-3">
+          <input type="number" id="gen-count" value="50" min="1" max="1000"
+            class="w-32 px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-purple-500">
+          <button id="gen-btn" class="btn-primary flex-1 py-2.5 rounded-xl text-white font-semibold text-sm">生成并导入数据库</button>
+        </div>
+        <p class="text-xs text-gray-400 mb-4">生成后自动入库，同时在下方生成 CSV 供上传发卡平台</p>
+        <div id="gen-result" class="hidden">
+          <textarea id="gen-csv" readonly rows="5" class="w-full text-xs font-mono p-3 rounded-xl bg-gray-50 border border-gray-200"></textarea>
+          <div class="flex gap-2 mt-2">
+            <button id="copy-csv-btn" class="flex-1 py-2 rounded-xl bg-gray-100 text-gray-700 text-sm font-medium">📋 复制 CSV（发卡平台用）</button>
+            <button id="download-csv-btn" class="flex-1 py-2 rounded-xl bg-gray-100 text-gray-700 text-sm font-medium">⬇️ 下载 CSV 文件</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 密钥列表 -->
+      <div class="card p-6 mb-6">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="font-bold text-gray-900 text-sm">📋 密钥列表</h2>
+          <select id="filter-select" class="text-sm px-3 py-1.5 rounded-lg border border-gray-200">
+            <option value="all">全部</option>
+            <option value="unused">未使用</option>
+            <option value="partial">使用中</option>
+            <option value="exhausted">已用完</option>
+          </select>
+        </div>
+        <div class="overflow-x-auto max-h-96 overflow-y-auto rounded-xl border border-gray-100">
+          <table class="admin-table w-full text-sm">
+            <thead>
+              <tr class="text-left text-xs text-gray-500">
+                <th class="px-4 py-3">密钥</th>
+                <th class="px-4 py-3">次数</th>
+                <th class="px-4 py-3">状态</th>
+                <th class="px-4 py-3">创建时间</th>
+                <th class="px-4 py-3 text-right">操作</th>
+              </tr>
+            </thead>
+            <tbody id="cards-tbody"></tbody>
+          </table>
+        </div>
+        <p id="cards-empty" class="text-center text-sm text-gray-400 py-8 hidden">暂无密钥</p>
+      </div>
+
+      <!-- 修改密码 -->
+      <div class="card p-6">
+        <h2 class="font-bold text-gray-900 text-sm mb-4">🔑 修改管理密码</h2>
+        <div class="space-y-3">
+          <input type="password" id="old-pwd" placeholder="当前密码" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-purple-500">
+          <input type="password" id="new-pwd" placeholder="新密码（至少8位）" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-purple-500">
+          <button id="change-pwd-btn" class="w-full py-2.5 rounded-xl bg-gray-100 text-gray-700 text-sm font-medium">确认修改</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div id="admin-toast" class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 hidden bg-black/80 text-white text-sm px-5 py-3 rounded-xl"></div>
+
+  <script>
+    const client = getSupabaseClient();
+    let adminPassword = '';
+    let allCards = [];
+
+    const $ = id => document.getElementById(id);
+
+    function toast(msg) {
+      const t = $('admin-toast');
+      t.textContent = msg;
+      t.classList.remove('hidden');
+      setTimeout(() => t.classList.add('hidden'), 2200);
+    }
+
+    // ===== 登录 =====
+    async function adminLogin() {
+      const pwd = $('admin-pwd').value.trim();
+      if (!pwd) return;
+      const { data, error } = await client.rpc('admin_verify', { p_password: pwd });
+      if (error || !data.ok) {
+        const el = $('admin-login-error');
+        el.textContent = (error && error.message) || data.message || '密码错误';
+        el.classList.remove('hidden');
+        return;
+      }
+      adminPassword = pwd;
+      sessionStorage.setItem('admin_pwd', pwd);
+      $('admin-login').classList.add('hidden');
+      $('admin-panel').classList.remove('hidden');
+      loadCards();
+    }
+
+    function adminLogout() {
+      sessionStorage.removeItem('admin_pwd');
+      location.reload();
+    }
+
+    // ===== 加载列表 =====
+    async function loadCards() {
+      toast('加载中...');
+      const { data, error } = await client.rpc('admin_list_cards', { p_password: adminPassword });
+      if (error) {
+        toast('加载失败：' + error.message);
+        return;
+      }
+      allCards = data || [];
+      toast(`已加载 ${allCards.length} 个密钥`);
+      renderStats();
+      renderTable();
+    }
+
+    function renderStats() {
+      const total = allCards.length;
+      const unused = allCards.filter(c => c.used_count === 0).length;
+      const exhausted = allCards.filter(c => c.used_count >= c.max_uses).length;
+      $('stat-total').textContent = total;
+      $('stat-unused').textContent = unused;
+      $('stat-exhausted').textContent = exhausted;
+    }
+
+    function renderTable() {
+      const filter = $('filter-select').value;
+      let list = allCards;
+      if (filter === 'unused') list = allCards.filter(c => c.used_count === 0);
+      if (filter === 'partial') list = allCards.filter(c => c.used_count > 0 && c.used_count < c.max_uses);
+      if (filter === 'exhausted') list = allCards.filter(c => c.used_count >= c.max_uses);
+
+      const tbody = $('cards-tbody');
+      tbody.innerHTML = '';
+      $('cards-empty').classList.toggle('hidden', list.length > 0);
+
+      list.forEach(c => {
+        const exhausted = c.used_count >= c.max_uses;
+        const status = c.used_count === 0
+          ? '<span class="status-pill bg-green-100 text-green-700">未使用</span>'
+          : exhausted
+            ? '<span class="status-pill bg-red-100 text-red-600">已用完</span>'
+            : '<span class="status-pill bg-amber-100 text-amber-700">使用中</span>';
+        const date = new Date(c.created_at).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+        const tr = document.createElement('tr');
+        tr.className = 'border-t border-gray-50 hover:bg-gray-50/50';
+        tr.innerHTML = `
+          <td class="px-4 py-3 font-mono text-xs">${c.code}</td>
+          <td class="px-4 py-3 whitespace-nowrap">${c.used_count} / ${c.max_uses}</td>
+          <td class="px-4 py-3">${status}</td>
+          <td class="px-4 py-3 text-xs text-gray-400 whitespace-nowrap">${date}</td>
+          <td class="px-4 py-3 text-right whitespace-nowrap">
+            <button data-act="copy" data-code="${c.code}" class="px-2 py-1 text-xs rounded-lg bg-gray-100 text-gray-600">复制</button>
+            <button data-act="reset" data-code="${c.code}" class="px-2 py-1 text-xs rounded-lg bg-blue-50 text-blue-600">重置</button>
+            <button data-act="delete" data-code="${c.code}" class="px-2 py-1 text-xs rounded-lg bg-red-50 text-red-500">删除</button>
+          </td>`;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // 表格事件委托
+    $('cards-tbody').addEventListener('click', async (e) => {
+      const btn = e.target.closest('button[data-act]');
+      if (!btn) return;
+      const code = btn.dataset.code;
+      const act = btn.dataset.act;
+
+      if (act === 'copy') {
+        navigator.clipboard.writeText(code).then(() => toast('已复制：' + code));
+        return;
+      }
+      if (act === 'reset') {
+        if (!confirm(`重置 ${code} 的使用次数为 0？`)) return;
+        const { data } = await client.rpc('admin_reset_card', { p_password: adminPassword, p_code: code });
+        toast(data.ok ? '已重置' : data.message);
+        loadCards();
+        return;
+      }
+      if (act === 'delete') {
+        if (!confirm(`确定删除密钥 ${code}？\n删除后持有该密钥的买家将无法使用！`)) return;
+        const { data } = await client.rpc('admin_delete_card', { p_password: adminPassword, p_code: code });
+        toast(data.ok ? '已删除' : data.message);
+        loadCards();
+      }
+    });
+
+    // ===== 生成密钥 =====
+    const CHARSET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+    function randomBlock(len) {
+      const bytes = new Uint8Array(len);
+      crypto.getRandomValues(bytes);
+      let s = '';
+      for (let i = 0; i < len; i++) s += CHARSET[bytes[i] % CHARSET.length];
+      return s;
+    }
+    function generateCode() {
+      return `CF-${randomBlock(4)}-${randomBlock(4)}-${randomBlock(4)}`;
+    }
+
+    async function generateCards() {
+      const count = Math.min(1000, Math.max(1, parseInt($('gen-count').value, 10) || 50));
+      $('gen-btn').disabled = true;
+      $('gen-btn').textContent = '生成中...';
+      try {
+        const codes = new Set();
+        while (codes.size < count) codes.add(generateCode());
+        const codeList = Array.from(codes);
+
+        const { data, error } = await client.rpc('admin_add_cards', {
+          p_password: adminPassword,
+          p_codes: codeList,
+        });
+        if (error || !data.ok) {
+          toast((error && error.message) || data.message || '导入失败');
+          return;
+        }
+        $('gen-csv').value = 'code\n' + codeList.join('\n');
+        $('gen-result').classList.remove('hidden');
+        toast(`✅ 成功生成 ${data.added} 个密钥并已入库`);
+        loadCards();
+      } finally {
+        $('gen-btn').disabled = false;
+        $('gen-btn').textContent = '生成并导入数据库';
+      }
+    }
+
+    function downloadCsv() {
+      const blob = new Blob([$('gen-csv').value], { type: 'text/csv;charset=utf-8' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `cards_${Date.now()}.csv`;
+      link.click();
+    }
+
+    // ===== 修改密码 =====
+    async function changePassword() {
+      const oldP = $('old-pwd').value.trim();
+      const newP = $('new-pwd').value.trim();
+      if (!oldP || !newP) return toast('请填写完整');
+      const { data, error } = await client.rpc('admin_set_password', {
+        p_password: oldP, p_new_password: newP,
+      });
+      if (error || !data.ok) {
+        toast((error && error.message) || data.message);
+        return;
+      }
+      adminPassword = newP;
+      sessionStorage.setItem('admin_pwd', newP);
+      $('old-pwd').value = '';
+      $('new-pwd').value = '';
+      toast('✅ 密码已修改');
+    }
+
+    // ===== 事件绑定 =====
+    $('admin-login-btn').addEventListener('click', adminLogin);
+    $('admin-pwd').addEventListener('keypress', e => { if (e.key === 'Enter') adminLogin(); });
+    $('logout-btn').addEventListener('click', adminLogout);
+    $('refresh-btn').addEventListener('click', loadCards);
+    $('filter-select').addEventListener('change', renderTable);
+    $('gen-btn').addEventListener('click', generateCards);
+    $('copy-csv-btn').addEventListener('click', () => {
+      navigator.clipboard.writeText($('gen-csv').value).then(() => toast('CSV 已复制，去发卡平台粘贴上传'));
+    });
+    $('download-csv-btn').addEventListener('click', downloadCsv);
+    $('change-pwd-btn').addEventListener('click', changePassword);
+
+    // 会话保持（关标签页即失效）
+    const savedPwd = sessionStorage.getItem('admin_pwd');
+    if (savedPwd) {
+      adminPassword = savedPwd;
+      $('admin-login').classList.add('hidden');
+      $('admin-panel').classList.remove('hidden');
+      loadCards();
+    }
+  </script>
+</body>
+</html>

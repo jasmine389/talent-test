@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>天赋职业测评 | 8分钟看清你天生该走的路</title>
+<meta name="description" content="24道题，测出你的霍兰德职业代码与六维天赋画像，看清你天生适合走的路。">
+<link rel="stylesheet" href="styles.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase-config.js"></script>
+<script src="data-questions.js"></script>
+<script src="data-types-a.js"></script>
+<script src="data-types-b.js"></script>
+</head>
+<body>
+
+<!-- ==================== 登录页 ==================== -->
+<section id="login-page" class="page active">
+  <div class="login-hero px-6 pt-16 pb-14 text-center" style="padding:64px 24px 52px">
+    <div style="display:inline-block;padding:9px 22px;border-radius:999px;background:rgba(255,255,255,.14);
+      border:1px solid rgba(255,255,255,.25);font-size:15px;font-weight:700;letter-spacing:1px">
+      24 道题 · 约 8 分钟 · 霍兰德职业测评
+    </div>
+    <h1 style="font-size:42px;font-weight:900;line-height:1.25;margin-top:24px;letter-spacing:1px">
+      去端你天生<br>就该吃的那碗饭
+    </h1>
+    <p style="font-size:17px;line-height:1.7;margin-top:18px;color:rgba(255,255,255,.82)">
+      你该走的那条路，天赋早就暗示过你了。<br>测完你会知道：你不是不行，是没站在自己的位置上。
+    </p>
+    <div style="display:flex;justify-content:center;gap:10px;margin-top:26px;flex-wrap:wrap">
+      <span class="role-tag" style="background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.25);color:#dbeafe">实干家</span>
+      <span class="role-tag" style="background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.25);color:#dbeafe">解谜人</span>
+      <span class="role-tag" style="background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.25);color:#dbeafe">造梦师</span>
+      <span class="role-tag" style="background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.25);color:#dbeafe">点灯人</span>
+      <span class="role-tag" style="background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.25);color:#dbeafe">破局者</span>
+      <span class="role-tag" style="background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.25);color:#dbeafe">掌舵手</span>
+    </div>
+  </div>
+
+  <div style="padding:28px 20px 40px;max-width:480px;margin:0 auto">
+    <div class="card" style="padding:26px 22px">
+      <label style="display:block;font-size:16px;font-weight:800;color:var(--ink-soft);margin-bottom:12px">
+        输入你的测评卡密
+      </label>
+      <input id="key-input" class="key-input" type="text" placeholder="CF-XXXX-XXXX-XXXX"
+             maxlength="17" autocomplete="off" spellcheck="false">
+      <p id="login-error" style="display:none;color:#dc2626;font-size:14px;margin-top:10px;text-align:center"></p>
+      <button id="start-btn" class="btn-primary" style="width:100%;padding:17px;font-size:19px;margin-top:18px">
+        开 始 测 评
+      </button>
+      <p style="font-size:13px;color:var(--ink-mute);text-align:center;margin-top:14px;line-height:1.6">
+        一个卡密可测 3 次 · 下单后自动发货<br>结果可保存为长图，随时回看
+      </p>
+    </div>
+
+    <div class="card" style="padding:20px 22px;margin-top:16px">
+      <div style="font-size:15px;font-weight:900;color:var(--blue-800);margin-bottom:10px">为什么这个测评有参考性</div>
+      <div style="font-size:14px;color:var(--ink-soft);line-height:1.75">
+        测评采用<b>霍兰德职业兴趣理论（RIASEC）</b>，1966 年由美国心理学家 John L. Holland 提出，
+        是目前全球高校就业指导中心与职业咨询领域使用最广泛的兴趣测评模型之一，
+        中国多所高校的就业指导课程也在使用同一工具。
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== 答题页 ==================== -->
+<section id="quiz-page" class="page">
+  <div style="max-width:520px;margin:0 auto;padding:22px 20px 130px">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px">
+      <span style="font-size:15px;font-weight:800;color:var(--ink-soft)">
+        第 <span id="q-now" class="stat-num">1</span> / <span id="q-total">24</span> 题
+      </span>
+      <span id="q-pct" style="font-size:14px;font-weight:700;color:var(--blue-600)">0%</span>
+    </div>
+    <div class="progress-track"><div id="progress-fill" class="progress-fill" style="width:0%"></div></div>
+
+    <div class="card" style="padding:28px 24px;margin-top:22px">
+      <div id="q-dim" style="display:none"></div>
+      <h2 id="q-text" style="font-size:21px;font-weight:800;line-height:1.6;margin-bottom:22px">题目加载中…</h2>
+      <div id="options"></div>
+    </div>
+
+    <div style="display:flex;gap:12px;margin-top:20px">
+      <button id="prev-btn" class="btn-ghost" style="flex:0 0 108px;padding:15px 0;font-size:16px">上一题</button>
+      <button id="next-btn" class="btn-primary" style="flex:1;padding:15px 0;font-size:17px">下一题</button>
+    </div>
+    <p style="text-align:center;font-size:13px;color:var(--ink-mute);margin-top:14px">
+      按第一反应作答即可，没有对错
+    </p>
+  </div>
+</section>
+
+<!-- ==================== 结果页 ==================== -->
+<section id="result-page" class="page">
+  <div id="result-card">
+    <!-- 头部 -->
+    <div class="result-hero" style="padding:56px 22px 40px;text-align:center">
+      <div style="font-size:15px;font-weight:700;color:rgba(255,255,255,.72);letter-spacing:3px">你 的 天 赋 职 业 画 像</div>
+      <div id="r-emoji" style="font-size:62px;margin-top:16px">🔧</div>
+      <h1 id="r-name" style="font-size:38px;font-weight:900;margin-top:6px;letter-spacing:2px">实干家</h1>
+      <div id="r-tag" style="font-size:17px;color:rgba(255,255,255,.85);margin-top:12px;font-weight:600">东西得自己做出来才算数</div>
+      <div style="display:flex;justify-content:center;gap:12px;margin-top:22px;flex-wrap:wrap">
+        <div class="code-box" style="padding:12px 18px">
+          <div style="font-size:12px;color:rgba(255,255,255,.66);letter-spacing:1px">霍兰德职业代码</div>
+          <div id="r-code" style="font-size:24px;font-weight:900;letter-spacing:3px;margin-top:2px">R-I-C</div>
+        </div>
+        <div class="code-box" style="padding:12px 18px">
+          <div style="font-size:12px;color:rgba(255,255,255,.66);letter-spacing:1px">全网同类占比</div>
+          <div id="r-rarity" style="font-size:24px;font-weight:900;margin-top:2px">约 20%</div>
+        </div>
+        <div class="code-box" style="padding:12px 18px">
+          <div style="font-size:12px;color:rgba(255,255,255,.66);letter-spacing:1px">天赋指数</div>
+          <div id="r-score" style="font-size:24px;font-weight:900;margin-top:2px">82</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="max-width:560px;margin:0 auto;padding:28px 18px 130px">
+
+      <!-- 你是谁 -->
+      <div class="card" style="padding:24px 22px">
+        <div class="section-title">一句话认识你</div>
+        <p id="r-whoami" style="font-size:17px;line-height:1.85;color:var(--ink)"></p>
+      </div>
+
+      <!-- 六维天赋雷达 -->
+      <div class="card" style="padding:24px 22px;margin-top:16px">
+        <div class="section-title">六维天赋画像</div>
+        <div style="position:relative;height:320px">
+          <canvas id="radar-chart"></canvas>
+        </div>
+        <p style="font-size:13px;color:var(--ink-mute);text-align:center;margin-top:6px;line-height:1.6">
+          分数越高代表该维度倾向越强，最高 100 分。<br>雷达图的形状，就是你区别于别人的地方。
+        </p>
+      </div>
+
+      <!-- 维度评分条 -->
+      <div class="card" style="padding:24px 22px;margin-top:16px">
+        <div class="section-title">六维分数明细</div>
+        <div id="r-bars"></div>
+      </div>
+
+      <!-- 天赋信号 -->
+      <div class="card" style="padding:24px 22px;margin-top:16px">
+        <div class="section-title">这些你以为"谁都会"的事，其实是你的天赋</div>
+        <div id="r-signals"></div>
+      </div>
+
+      <!-- 优势与陷阱 -->
+      <div style="display:flex;flex-direction:column;gap:16px;margin-top:16px">
+        <div class="card" style="padding:24px 22px">
+          <div class="section-title">你的优势</div>
+          <div id="r-adv"></div>
+        </div>
+        <div class="card" style="padding:24px 22px">
+          <div class="section-title" style="color:#b45309">你的陷阱</div>
+          <div id="r-traps"></div>
+        </div>
+      </div>
+
+      <!-- 职业方向 -->
+      <div class="card" style="padding:24px 22px;margin-top:16px">
+        <div class="section-title">适合你的中国真实职业方向</div>
+        <div id="r-careers"></div>
+        <p style="font-size:13px;color:var(--ink-mute);margin-top:12px;line-height:1.6">
+          岗位名称为方向参考，实际以各地招聘信息为准。
+        </p>
+      </div>
+
+      <!-- 薪资 -->
+      <div class="card" style="padding:24px 22px;margin-top:16px">
+        <div class="section-title">这类方向的薪资参考区间</div>
+        <div id="r-salary"></div>
+        <p style="font-size:12px;color:var(--ink-mute);margin-top:12px;line-height:1.7">
+          区间为国内市场一般参考，受城市、行业、公司规模与个人能力影响较大，仅供参考，不构成任何承诺。
+        </p>
+      </div>
+
+      <!-- 发展路径 -->
+      <div class="card" style="padding:24px 22px;margin-top:16px">
+        <div class="section-title">三阶段发展路径</div>
+        <div id="r-path"></div>
+      </div>
+
+      <!-- 避坑 -->
+      <div class="card" style="padding:24px 22px;margin-top:16px">
+        <div class="section-title">给你三个避坑提醒</div>
+        <div id="r-pitfalls"></div>
+      </div>
+
+      <!-- 一周行动 -->
+      <div class="card" style="padding:24px 22px;margin-top:16px;background:linear-gradient(160deg,#f5f9ff,#e8f1fe)">
+        <div class="section-title">这一周就能做的三件事</div>
+        <div id="r-actions"></div>
+      </div>
+
+      <!-- 环境与搭档 -->
+      <div class="card" style="padding:24px 22px;margin-top:16px">
+        <div class="section-title">适合你的环境 & 互补搭档</div>
+        <div style="font-size:16px;line-height:1.8">
+          <div style="margin-bottom:12px">
+            <b style="color:#1d4ed8">✔ 适合你的环境</b><br>
+            <span id="r-envfit" style="color:var(--ink-soft)"></span>
+          </div>
+          <div style="margin-bottom:12px">
+            <b style="color:#b45309">✘ 会消耗你的环境</b><br>
+            <span id="r-envunfit" style="color:var(--ink-soft)"></span>
+          </div>
+          <div>
+            <b style="color:#1d4ed8">最佳搭档类型</b><br>
+            <span id="r-partner" style="color:var(--ink-soft)"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 理论依据 + 客观数据 -->
+      <div class="card" style="padding:24px 22px;margin-top:16px">
+        <div class="section-title">这个结果为什么有参考性</div>
+        <div style="font-size:15px;color:var(--ink-soft);line-height:1.85">
+          <p style="margin-bottom:12px">
+            <b style="color:var(--ink)">理论底座：</b>本测评基于美国心理学家 John L. Holland 于 1966 年提出的
+            <b>霍兰德职业兴趣理论（RIASEC）</b>。该理论认为人的职业兴趣可分为六种类型，
+            职业满意度取决于「个人类型」与「职业环境」的匹配程度（Holland 称之为一致性 Congruence）。
+            它至今仍是全球高校就业指导中心与职业咨询中使用最广泛的模型之一。
+          </p>
+          <p style="margin-bottom:12px">
+            <b style="color:var(--ink)">算法说明：</b>24 道题全部来自可观察的具体行为场景，每题按 1-5 分计权，
+            六个维度分别求和后换算为 0-100 分。你的「职业代码」由分数最高的三个维度组成，
+            排第一的维度为主导类型。
+          </p>
+          <p>
+            <b style="color:var(--ink)">当下的就业现实（数据来源：教育部公开数据）：</b>
+          </p>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap">
+          <div class="code-box" style="background:var(--blue-50);border:1px solid var(--line);padding:14px 16px;flex:1;min-width:140px;text-align:center">
+            <div style="font-size:26px;font-weight:900;color:var(--blue-700)">1270万</div>
+            <div style="font-size:12px;color:var(--ink-mute);margin-top:4px">2026届高校毕业生规模</div>
+          </div>
+          <div class="code-box" style="background:var(--blue-50);border:1px solid var(--line);padding:14px 16px;flex:1;min-width:140px;text-align:center">
+            <div style="font-size:26px;font-weight:900;color:var(--blue-700)">约 2:1</div>
+            <div style="font-size:12px;color:var(--ink-mute);margin-top:4px">校招优质岗位供需比</div>
+          </div>
+          <div class="code-box" style="background:var(--blue-50);border:1px solid var(--line);padding:14px 16px;flex:1;min-width:140px;text-align:center">
+            <div style="font-size:26px;font-weight:900;color:var(--blue-700)">40%</div>
+            <div style="font-size:12px;color:var(--ink-mute);margin-top:4px">综合能力在录用评价中的占比</div>
+          </div>
+        </div>
+        <p style="font-size:14px;color:var(--ink-soft);line-height:1.85;margin-top:16px">
+          这意味着两件事：第一，<b>方向比努力更稀缺</b>——1270 万人里大部分人在跟风投热门岗位，
+          而清楚自己天赋所在的人反而是少数；第二，<b>学历权重在下降</b>，
+          企业越来越看实战能力、解决问题与协作，而这些恰恰建立在你擅长的维度上。
+        </p>
+        <p style="font-size:14px;color:var(--ink-mute);line-height:1.85;margin-top:12px;padding-top:12px;border-top:1px dashed var(--line)">
+          ⚠️ 提醒：任何测评都是参考，不是宿命。它帮你缩小范围、减少试错成本，
+          但不能替你决定人生。真正的答案，在你动手做过之后才会出现。
+        </p>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- 底部操作条 -->
+  <div class="action-bar shot-hide">
+    <div style="display:flex;gap:10px;max-width:560px;margin:0 auto">
+      <button id="save-btn" class="btn-primary" style="flex:1;padding:15px 0;font-size:16px">保存结果长图</button>
+      <button id="share-btn" class="btn-ghost" style="flex:0 0 112px;padding:15px 0;font-size:16px">复制链接</button>
+      <button id="retry-btn" class="btn-ghost" style="flex:0 0 112px;padding:15px 0;font-size:16px">再测一次</button>
+    </div>
+    <div style="text-align:center;margin-top:10px">
+      <button id="review-btn" style="background:none;border:none;color:var(--blue-600);font-size:14px;font-weight:700;cursor:pointer">
+        🎁 好评有礼：返现 1 元
+      </button>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== 好评弹窗 ==================== -->
+<div id="review-modal" class="modal-mask">
+  <div class="modal-box">
+    <div style="font-size:46px">🎁</div>
+    <h3 style="font-size:22px;font-weight:900;margin-top:10px">好评有礼</h3>
+    <p style="font-size:16px;color:var(--ink-soft);line-height:1.8;margin-top:14px">
+      如果这次测评对你有帮助，<br>
+      欢迎去店铺留下你的真实评价。<br><br>
+      好评后<b style="color:#dc2626">联系客服并发送好评截图</b>，<br>
+      即可获得 <b style="color:#dc2626">1 元返现</b>。
+    </p>
+    <button id="review-close" class="btn-primary" style="width:100%;padding:15px;font-size:17px;margin-top:22px">
+      知道了
+    </button>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
